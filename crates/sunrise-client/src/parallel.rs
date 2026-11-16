@@ -315,6 +315,83 @@ fn pool() -> &'static rayon::ThreadPool {
     })
 }
 
+/// Proof that the caller is the thread that owns a `Game` and its tick: the server thread, or the
+/// window's frame. Zero-sized and `!Send + !Sync`, so it never reaches another thread, and a
+/// closure that captures it can't be handed to [`par_map`] or [`phase`].
+///
+/// The state only the tick may change takes it, today entering a level for block contacts
+/// (`block_contact::in_level`), so such a change happens between a tick's phases, never under
+/// one. A `Game` mints its own when it is built and lends it out by copy.
+#[derive(Clone, Copy, Debug)]
+pub struct TickThread(std::marker::PhantomData<*const ()>);
+
+impl TickThread {
+    /// The token for the `Game` this thread runs. Only a loop owner calls this, once, when it
+    /// builds its `Game`.
+    ///
+    /// # Panics
+    ///
+    /// Inside a tick phase's work: a worker never holds the tick's authority.
+    pub fn mint() -> Self {
+        assert!(
+            !sunrise_threads::in_tick_phase(),
+            "the tick thread's token was asked for inside a tick phase's work"
+        );
+        Self(std::marker::PhantomData)
+    }
+}
+
+pub(crate) mod sealed {
+    /// Keeps [`super::PhaseView`] to the views this crate vets.
+    pub trait Sealed {}
+}
+
+/// A tick phase's read-only input: plain data a worker may read on any thread, and nothing that
+/// dispatches a hook, reads or writes mod state, or holds a host, a random or a swappable table.
+/// Sealed: only the views this crate vets implement it (`RandomTickView`), never `LoopContext`,
+/// `World`, `Resources` or the `Game`. A view that needs a table the tick can replace holds its
+/// own `Arc` of it, taken when the phase starts.
+pub trait PhaseView: sealed::Sealed + Sync {}
+
+/// A tick phase: `work` over `items` on the pool (all on this thread while the parallel tick is
+/// off, or for fewer than `min` items), with every result back in the order of `items`, whatever
+/// order the threads took them in. The tick thread applies them in that order.
+///
+/// `work` is a function pointer, not a closure, so it captures nothing: what a worker sees is
+/// `view` and its item, and nothing that only the tick thread may touch. Inside `work`,
+/// `sunrise_threads::in_tick_phase` holds on every thread, so tick-owned state refuses it by name
+/// ([`TickThread::mint`], `block_contact`'s level, wasm calls):
+///
+/// ```no_run
+/// # use sunrise_client_lib::parallel::{phase, TickThread};
+/// # fn view() -> &'static sunrise_client_lib::random_tick_sections::RandomTickView<'static> { unimplemented!() }
+/// let _tick = TickThread::mint();
+/// phase(view(), &[1u32], 1, |_, item| item + 1);
+/// ```
+/// ```compile_fail
+/// # use sunrise_client_lib::parallel::{phase, TickThread};
+/// # fn view() -> &'static sunrise_client_lib::random_tick_sections::RandomTickView<'static> { unimplemented!() }
+/// let tick = TickThread::mint();
+/// // A worker can't capture the tick's token (or anything else).
+/// phase(view(), &[1u32], 1, |_, item| {
+///     let _ = tick;
+///     item + 1
+/// });
+/// ```
+///
+/// Tick phases use this; [`par_map`] and [`par_chunks_mut`] stay for work outside the tick's mod
+/// reach (rendering, packs, the LAN tracker's plain data).
+pub fn phase<V: PhaseView, T: Sync, R: Send>(
+    view: &V,
+    items: &[T],
+    min: usize,
+    work: fn(&V, &T) -> R,
+) -> Vec<R> {
+    par_map(items, min, |part, out| {
+        sunrise_threads::as_tick_phase(|| out.extend(part.iter().map(|item| work(view, item))));
+    })
+}
+
 /// `f` over `items` in parts on the pool, or all on this thread while the parallel tick is off or
 /// for fewer than `min` items: every part's results, in the order of `items`, as one thread would
 /// give them.
@@ -540,6 +617,22 @@ mod tests {
             "no two chunks ran at once"
         );
         assert!(runs.iter().all(|r| r.load(Ordering::SeqCst) == 1));
+    }
+
+    /// A phase's work never gets the tick's authority, on whatever thread it runs: minting the
+    /// token there is refused, and the tick thread can mint it again once the phase is over.
+    #[test]
+    fn a_phase_worker_cannot_take_the_tick_token() {
+        struct View;
+        impl sealed::Sealed for View {}
+        impl PhaseView for View {}
+        let items: Vec<u32> = (0..64).collect();
+        let refused = phase(&View, &items, 1, |_, _| {
+            std::panic::catch_unwind(TickThread::mint).is_err()
+        });
+        assert!(refused.iter().all(|&refused| refused));
+        assert!(!sunrise_threads::in_tick_phase());
+        TickThread::mint();
     }
 
     /// A panic in a part reaches the caller instead of being lost on a helper.

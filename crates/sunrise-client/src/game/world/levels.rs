@@ -1240,6 +1240,7 @@ impl Game<'_> {
             sunrise_client::spans::time("update_world", || self.update_world());
             let tick_span = sunrise_client::spans::guard("level_tick");
             result = sunrise_client::block_contact::in_level(
+                self.tick,
                 (self.serving.is_some() || self.options.dedicated.is_some()).then_some(dim.id()),
                 || {
                     if paused {

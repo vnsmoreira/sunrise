@@ -5025,9 +5025,13 @@ mod item_fall_on_tests {
                         .unwrap();
                     game.world.attachment_syncs.insert(mod_api::Holder::Level);
                     let caught = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        sunrise_client::block_contact::in_level(Some(game.dim.id()), || {
-                            game.item_fall_on(42, pos, 5.0);
-                        });
+                        sunrise_client::block_contact::in_level(
+                            sunrise_client::parallel::TickThread::mint(),
+                            Some(game.dim.id()),
+                            || {
+                                game.item_fall_on(42, pos, 5.0);
+                            },
+                        );
                     }))
                     .expect_err("actual Part must panic");
                     assert!(std::sync::Arc::ptr_eq(
@@ -5099,9 +5103,13 @@ mod item_fall_on_tests {
                 let mut destructions = 0;
                 for _ in 0..80 {
                     game.ticked_entities_through = u32::MAX;
-                    sunrise_client::block_contact::in_level(Some(game.dim.id()), || {
-                        game.tick_items();
-                    });
+                    sunrise_client::block_contact::in_level(
+                        sunrise_client::parallel::TickThread::mint(),
+                        Some(game.dim.id()),
+                        || {
+                            game.tick_items();
+                        },
+                    );
                     if game.world.block(1, 64, 1) == air {
                         destructions += 1;
                         game.world.set(1, 64, 1, stone).unwrap();

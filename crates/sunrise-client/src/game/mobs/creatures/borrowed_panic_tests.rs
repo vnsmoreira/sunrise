@@ -496,9 +496,11 @@ fn run_output(family: Family, output: Output) {
                         0.0
                     };
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        sunrise_client::block_contact::in_level(Some(game.dim.id()), || {
-                            game.tick_creature_entities()
-                        })
+                        sunrise_client::block_contact::in_level(
+                            sunrise_client::parallel::TickThread::mint(),
+                            Some(game.dim.id()),
+                            || game.tick_creature_entities(),
+                        )
                     }));
                     assert_eq!(
                         probe.calls.load(Ordering::SeqCst),

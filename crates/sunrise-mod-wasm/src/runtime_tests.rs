@@ -137,6 +137,17 @@ fn hook_round_trip_and_malformed_reply_refusal() {
         assert_eq!(call(&module), None);
     })
 }
+/// A call made inside a tick phase's work is refused before the guest runs, and the group keeps
+/// answering the tick's own thread.
+#[test]
+fn a_call_inside_a_tick_phase_is_refused_and_the_group_keeps_running() {
+    crate::test_stack::on_guest_stack(|| {
+        let module = module("i64.const 2199023255556"); // 512 << 32 | 4
+        assert_eq!(sunrise_threads::as_tick_phase(|| call(&module)), None);
+        assert!(!module.running.poisoned.load(Ordering::Relaxed));
+        assert_eq!(call(&module), Some(42));
+    })
+}
 /// The reply a hook names is read only where it lies inside guest memory.
 #[test]
 fn a_reply_reaching_past_guest_memory_is_refused_and_one_ending_at_its_edge_is_read() {

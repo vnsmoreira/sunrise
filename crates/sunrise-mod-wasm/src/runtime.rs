@@ -1048,6 +1048,16 @@ impl WasmMod {
             note(error.into());
             return Ok(None);
         }
+        // A tick phase's work runs off the tick's thread and in no fixed order: a group is
+        // single-threaded and its calls ordered, so it refuses such a caller by name.
+        if sunrise_threads::in_tick_phase() {
+            log::error!(
+                "wasm mod {}: called inside a tick phase's work, which a wasm mod never runs in",
+                self.mod_id()
+            );
+            note("called inside a tick phase's work".into());
+            return Ok(None);
+        }
         if self.running.poisoned.load(Ordering::Relaxed) {
             note("its group has stopped after an earlier fault".into());
             return Ok(None);

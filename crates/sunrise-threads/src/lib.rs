@@ -46,6 +46,31 @@ pub fn worker_count() -> usize {
     })
 }
 
+thread_local! {
+    static IN_TICK_PHASE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Whether this thread is running a tick phase's work right now (`sunrise_client::parallel::phase`),
+/// on a helper or on the tick's own thread while it takes a part. Tick-owned state (the current
+/// level, the tick token, a wasm group) refuses such a caller by name instead of answering from
+/// a thread-local that is empty there.
+pub fn in_tick_phase() -> bool {
+    IN_TICK_PHASE.get()
+}
+
+/// Runs `f` as a tick phase's work ([`in_tick_phase`]), restoring the previous mark even when
+/// `f` panics.
+pub fn as_tick_phase<R>(f: impl FnOnce() -> R) -> R {
+    struct Restore(bool);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            IN_TICK_PHASE.set(self.0);
+        }
+    }
+    let _restore = Restore(IN_TICK_PHASE.replace(true));
+    f()
+}
+
 /// `SUNRISE_SERIAL_TICK=all`: every [`par_chunks_mut`] keeps its chunks on the
 /// calling thread, in order — the serial reference a parallel phase of the
 /// tick is checked against, tick by tick (#8158).

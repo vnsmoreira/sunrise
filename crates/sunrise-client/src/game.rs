@@ -1239,6 +1239,9 @@ struct Game<'a> {
     /// The side, registries and mod settings of this game's resource generation, which
     /// its menus lend to the hooks they fire inside a loop; rebuilt by `refresh_loop_context`.
     loop_context: Arc<sunrise_world::native_load_context::LoopContext>,
+    /// This thread's authority over the game's tick-owned state (`parallel::TickThread`): a
+    /// `Game` never leaves the thread that built it.
+    tick: sunrise_client::parallel::TickThread,
     setting_overrides: std::cell::RefCell<std::collections::BTreeMap<(String, String), String>>,
     /// The native damage hooks every level of this game lends to its hits.
     damage_hooks: sunrise_client::health::DamageHooks,
@@ -10768,6 +10771,7 @@ impl<'a> Game<'a> {
             world_adopted: false,
             audio,
             loop_context: Arc::new(res.core.item_data.context().loop_context(loop_side, [])),
+            tick: sunrise_client::parallel::TickThread::mint(),
             setting_overrides: Default::default(),
             damage_hooks: native_hooks::DAMAGE_HOOKS,
             music: {

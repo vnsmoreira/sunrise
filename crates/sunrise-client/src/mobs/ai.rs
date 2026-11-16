@@ -153,9 +153,13 @@ mod inside_walk_tests {
                 let mut level = crate::health::TestLevel::new(0);
                 let mut events = Vec::new();
                 let before = mob.velocity.x;
-                crate::block_contact::in_level(Some("minecraft:overworld"), || {
-                    effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
-                });
+                crate::block_contact::in_level(
+                    crate::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
+                    },
+                );
                 assert_eq!(
                     *CONTACTS.lock().unwrap(),
                     vec![[1, 64, 1], [2, 64, 1]],
@@ -205,9 +209,13 @@ mod inside_walk_tests {
                 let mut level = crate::health::TestLevel::new(0);
                 let mut events = Vec::new();
                 let before = mob.velocity.x;
-                crate::block_contact::in_level(Some("minecraft:overworld"), || {
-                    effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
-                });
+                crate::block_contact::in_level(
+                    crate::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
+                    },
+                );
                 assert_eq!(CONTACTS.lock().unwrap().len(), 2);
                 assert!(!mob.alive(), "the killing write applied");
                 assert!(
@@ -248,9 +256,13 @@ mod inside_walk_tests {
                 let mut level = crate::health::TestLevel::new(0);
                 let mut events = Vec::new();
                 let before = mob.velocity.x;
-                crate::block_contact::in_level(Some("minecraft:overworld"), || {
-                    effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
-                });
+                crate::block_contact::in_level(
+                    crate::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
+                    },
+                );
                 assert_eq!(
                     CONTACTS.lock().unwrap().len(),
                     2,
@@ -298,9 +310,13 @@ mod inside_walk_tests {
                 let mut level = crate::health::TestLevel::new(0);
                 let mut events = Vec::new();
                 let before = (mob.velocity.x, mob.health, mob.extra.effects.len());
-                crate::block_contact::in_level(Some("minecraft:overworld"), || {
-                    effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
-                });
+                crate::block_contact::in_level(
+                    crate::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
+                    },
+                );
                 assert_eq!(
                     (mob.velocity.x, mob.health, mob.extra.effects.len()),
                     before,
@@ -343,9 +359,13 @@ mod inside_walk_tests {
                 mob.previous = Vec3::new(0.5, 64.0, 0.5);
                 let mut level = crate::health::TestLevel::new(0);
                 let mut events = Vec::new();
-                crate::block_contact::in_level(Some("minecraft:overworld"), || {
-                    effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
-                });
+                crate::block_contact::in_level(
+                    crate::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        effects_from_blocks(&mut mob, w, &mut level.level(), &mut events);
+                    },
+                );
                 let contacts = CONTACTS.lock().unwrap().clone();
                 let x_first: Vec<_> = contacts.iter().filter(|p| p[2] == 1).collect();
                 let z_last: Vec<_> = contacts.iter().filter(|p| p[2] == 2).collect();

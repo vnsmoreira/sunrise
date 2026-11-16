@@ -259,22 +259,26 @@ mod sweep_tests {
             ..
         } = game;
         let entities: [sunrise_core::geometry::Aabb; 0] = [];
-        sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-            let mut w = MotionWorld {
-                tag_items: None,
-                block_registries: Some(&pack.block_registries),
-                loop_context,
-                damage_hooks,
-                entities: &entities,
-                player: player.as_mut().unwrap(),
-                scene: world,
-                assets: &pack.assets,
-                collision_binding: collision,
-                resources: motion,
-                health: health_resources,
-            };
-            runs(&mut w).unwrap();
-        });
+        sunrise_client::block_contact::in_level(
+            sunrise_client::parallel::TickThread::mint(),
+            Some("minecraft:overworld"),
+            || {
+                let mut w = MotionWorld {
+                    tag_items: None,
+                    block_registries: Some(&pack.block_registries),
+                    loop_context,
+                    damage_hooks,
+                    entities: &entities,
+                    player: player.as_mut().unwrap(),
+                    scene: world,
+                    assets: &pack.assets,
+                    collision_binding: collision,
+                    resources: motion,
+                    health: health_resources,
+                };
+                runs(&mut w).unwrap();
+            },
+        );
         let player = game.player.as_ref().unwrap();
         (before, player.velocity.x, player.health.dead_or_dying())
     }
@@ -629,9 +633,13 @@ mod sweep_tests {
                 let _ = sunrise_client::block_contact::HOOKS.set(super::BLOCK_CONTACT_HOOKS);
                 let mut item = item_at_blocks(game);
                 let before = item.velocity.x;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_item_inside(&mut item);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_item_inside(&mut item);
+                    },
+                );
                 assert_eq!(
                     *part.contacts.lock().unwrap(),
                     vec![[1, 100, 0], [2, 100, 0]],
@@ -661,9 +669,13 @@ mod sweep_tests {
                 let _ = sunrise_client::block_contact::HOOKS.set(super::BLOCK_CONTACT_HOOKS);
                 let mut item = item_at_blocks(game);
                 let before = item.velocity.x;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_item_inside(&mut item);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_item_inside(&mut item);
+                    },
+                );
                 assert_eq!(part.contacts.lock().unwrap().len(), 2);
                 assert!(item.health <= 0, "the killing write applied");
                 assert!(
@@ -693,9 +705,13 @@ mod sweep_tests {
                 let rows = game.dropped.len();
                 let mut items = game.dropped.lift();
                 let before = items[0].velocity.x;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_item_inside(&mut items[0]);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_item_inside(&mut items[0]);
+                    },
+                );
                 game.put_back_dropped(items);
                 assert_eq!(
                     part.contacts.lock().unwrap().len(),
@@ -727,9 +743,13 @@ mod sweep_tests {
             let _ = sunrise_client::block_contact::HOOKS.set(super::BLOCK_CONTACT_HOOKS);
             let mut item = item_at_blocks(game);
             let before = (item.velocity.x, item.health, item.fire_ticks);
-            sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                game.sweep_item_inside(&mut item);
-            });
+            sunrise_client::block_contact::in_level(
+                sunrise_client::parallel::TickThread::mint(),
+                Some("minecraft:overworld"),
+                || {
+                    game.sweep_item_inside(&mut item);
+                },
+            );
             assert_eq!(
                 (item.velocity.x, item.health, item.fire_ticks),
                 before,
@@ -770,9 +790,13 @@ mod sweep_tests {
                 shot.id = 9;
                 shot.previous = sunrise_core::geometry::Vec3::new(0.5, 100.0, 0.5);
                 let before = shot.velocity.x;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_projectile_inside(&mut shot);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_projectile_inside(&mut shot);
+                    },
+                );
                 assert_eq!(
                     *part.contacts.lock().unwrap(),
                     vec![[1, 100, 0], [2, 100, 0]],
@@ -801,9 +825,13 @@ mod sweep_tests {
                     a.removed = true;
                 }
                 let before = arrow.velocity.x;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_projectile_inside(&mut arrow);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_projectile_inside(&mut arrow);
+                    },
+                );
                 assert!(
                     part.contacts.lock().unwrap().is_empty(),
                     "a removed projectile is not walked"
@@ -838,9 +866,13 @@ mod sweep_tests {
             );
             shot.previous = sunrise_core::geometry::Vec3::new(0.5, 100.0, 0.5);
             let before = (shot.velocity.x, shot.fire_ticks, shot.fall_distance);
-            sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                game.sweep_projectile_inside(&mut shot);
-            });
+            sunrise_client::block_contact::in_level(
+                sunrise_client::parallel::TickThread::mint(),
+                Some("minecraft:overworld"),
+                || {
+                    game.sweep_projectile_inside(&mut shot);
+                },
+            );
             assert_eq!(
                 (shot.velocity.x, shot.fire_ticks, shot.fall_distance),
                 before,
@@ -877,9 +909,13 @@ mod sweep_tests {
                 let flying = arrow_shot(9, (0.5, 100.0, 0.5), (2.5, 100.0, 0.5));
                 let before = flying.velocity.x;
                 let mut flying = flying;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_projectile_inside(&mut flying);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_projectile_inside(&mut flying);
+                    },
+                );
                 assert_eq!(
                     *part.contacts.lock().unwrap(),
                     vec![[1, 100, 0], [2, 100, 0]],
@@ -893,9 +929,13 @@ mod sweep_tests {
                 // A stuck arrow: no move, the block it sits in still tells the part.
                 let mut stuck = arrow_shot(10, (1.5, 100.0, 0.5), (1.5, 100.0, 0.5));
                 stuck.velocity = sunrise_core::geometry::Vec3::ZERO;
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    game.sweep_projectile_inside(&mut stuck);
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        game.sweep_projectile_inside(&mut stuck);
+                    },
+                );
                 assert_eq!(
                     *part.contacts.lock().unwrap(),
                     vec![[1, 100, 0]],
@@ -940,9 +980,13 @@ mod sweep_tests {
                 game.creatures.projectiles.push(shot);
                 let rows = game.creatures.projectiles.len();
                 let mut projectiles = game.creatures.projectiles.lift();
-                sunrise_client::block_contact::in_level(Some("minecraft:overworld"), || {
-                    projectiles.update(0, |p| game.sweep_projectile_inside(p));
-                });
+                sunrise_client::block_contact::in_level(
+                    sunrise_client::parallel::TickThread::mint(),
+                    Some("minecraft:overworld"),
+                    || {
+                        projectiles.update(0, |p| game.sweep_projectile_inside(p));
+                    },
+                );
                 game.creatures.projectiles.restore(
                     projectiles,
                     sunrise_client::join_seq::RestoreOrder::SpawnsFirst,

@@ -275,8 +275,13 @@ thread_local! {
 }
 
 /// Scope authority to this thread and restore it even on an error or panic.
-/// Nested guest actions may temporarily enter a different dimension.
-pub fn in_level<R>(dimension: Option<&'static str>, f: impl FnOnce() -> R) -> R {
+/// Nested guest actions may temporarily enter a different dimension. Only the tick's own
+/// thread enters a level (`tick`), so a level never changes under a tick phase.
+pub fn in_level<R>(
+    _tick: crate::parallel::TickThread,
+    dimension: Option<&'static str>,
+    f: impl FnOnce() -> R,
+) -> R {
     struct Restore(Option<&'static str>);
     impl Drop for Restore {
         fn drop(&mut self) {
@@ -287,12 +292,28 @@ pub fn in_level<R>(dimension: Option<&'static str>, f: impl FnOnce() -> R) -> R 
     f()
 }
 
+/// The level this thread's contacts answer in. A tick phase's work is refused one, by name:
+/// the level belongs to the tick's thread, and a phase that needs it reads it through its view.
+fn tick_level(read: &'static str) -> Option<&'static str> {
+    if sunrise_threads::in_tick_phase() {
+        static REFUSED: std::sync::Once = std::sync::Once::new();
+        REFUSED.call_once(|| {
+            log::error!(
+                "block contact `{read}` refused inside a tick phase's work: the current level belongs to the tick's thread"
+            );
+        });
+        debug_assert!(false, "block contact `{read}` read inside a tick phase");
+        return None;
+    }
+    LEVEL.get()
+}
+
 /// `Block.stepOn` for a mod block: the entity stands on `contact`'s block.
 pub fn step_on(block: &str, contact: Contact<'_>) {
     if block.starts_with("minecraft:") {
         return;
     }
-    if let Some(dimension) = LEVEL.get()
+    if let Some(dimension) = tick_level("step_on")
         && let Some(hooks) = HOOKS.get()
     {
         (hooks.step_on)(dimension, contact);
@@ -302,7 +323,7 @@ pub fn step_on(block: &str, contact: Contact<'_>) {
 /// The dimension the current thread's contacts answer in, as `inside` and the
 /// landing routes read it: the server's tick set it around the entity passes.
 pub fn current_level() -> Option<&'static str> {
-    LEVEL.get()
+    tick_level("current_level")
 }
 
 /// Whether a part of the block `state` answers `fall_on`.
@@ -315,7 +336,7 @@ pub fn fall_listens(state: BlockStateId) -> bool {
 /// ignored and a negative one is zero. The writes the part asked for are kept until the
 /// entity's batch ends. Nothing runs off the server or without a part.
 pub fn fall(level: &mut DamageLevel<'_>, contact: Contact<'_>, distance: f64, damage: f32) -> f32 {
-    let (Some(dimension), Some(hooks)) = (LEVEL.get(), HOOKS.get()) else {
+    let (Some(dimension), Some(hooks)) = (tick_level("fall"), HOOKS.get()) else {
         return damage;
     };
     if !(hooks.fall_listens)(contact.state) {
@@ -364,7 +385,7 @@ pub fn bounce(
     fall_distance: f64,
     movement: sunrise_core::geometry::Vec3,
 ) -> sunrise_core::geometry::Vec3 {
-    let (Some(dimension), Some(hooks)) = (LEVEL.get(), HOOKS.get()) else {
+    let (Some(dimension), Some(hooks)) = (tick_level("bounce"), HOOKS.get()) else {
         return movement;
     };
     if !(hooks.bounce_listens)(contact.state) {
@@ -429,7 +450,9 @@ pub fn inside_written(state: BlockStateId, position: BlockPos, writes: Vec<Insid
 /// Note a minecart on the rail `state` at `position`, if a part there listens; a world
 /// without such a part pays one test per rail step.
 pub fn minecart_pass(entity: i32, state: BlockStateId, position: BlockPos) {
-    if LEVEL.get().is_some() && HOOKS.get().is_some_and(|hooks| (hooks.pass_listens)(state)) {
+    if tick_level("minecart_pass").is_some()
+        && HOOKS.get().is_some_and(|hooks| (hooks.pass_listens)(state))
+    {
         PENDING.with_borrow_mut(|pending| {
             pending.push(Pending::MinecartPass(MinecartPass {
                 entity,

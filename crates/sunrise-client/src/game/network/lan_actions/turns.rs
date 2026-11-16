@@ -30,7 +30,7 @@ impl Game<'_> {
             });
             let dimension = (self.serving.is_some() || self.options.dedicated.is_some())
                 .then_some(self.dim.id());
-            let result = sunrise_client::block_contact::in_level(dimension, || f(self));
+            let result = sunrise_client::block_contact::in_level(self.tick, dimension, || f(self));
             self.drain_entity_inside();
             result
         }));
