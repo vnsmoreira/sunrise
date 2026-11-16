@@ -1227,6 +1227,13 @@ impl Game<'_> {
         let levels = self.tickets.levels();
         move |x, z| levels.entity_ticking_at(x, z)
     }
+    /// Whether the chunk's own status is entity-ticking (block coordinates), whatever the
+    /// simulation distance: the chunks whose entities are on `ServerLevel`'s entity tick list
+    /// (`Visibility.fromFullChunkStatus`), so they check despawning.
+    pub(super) fn entity_tick_listed_area(&self) -> impl Fn(i32, i32) -> bool + use<> {
+        let levels = self.tickets.levels();
+        move |x, z| levels.loaded_entity_ticking(x >> 4, z >> 4)
+    }
     /// The entity phase of `tick_creatures`: every mob's tick, deaths, and the
     /// projectiles and effects that follow from them.
     pub(super) fn tick_creature_entities(&mut self) -> Result<()> {

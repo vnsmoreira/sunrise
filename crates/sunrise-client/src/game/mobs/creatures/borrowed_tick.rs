@@ -170,6 +170,7 @@ impl Game<'_> {
             let mut section_yield = false;
             {
                 let ticking = self.entity_ticking_area();
+                let listed = self.entity_tick_listed_area();
                 let players = self.level_players();
                 let nearest = super::super::natural_spawning::NearestPlayers::new(&players);
                 // All but the snapshot is the same for every mob of the tick, so
@@ -258,6 +259,14 @@ impl Game<'_> {
                         cursor += 1;
                         continue;
                     }
+                    // ServerLevel.tick walks the entity tick list, which holds only the
+                    // entities of chunks whose own status is entity-ticking: a mob in the
+                    // loaded ring outside it fires no `mob_despawn`, makes no despawn draws
+                    // and doesn't tick.
+                    if !resuming && !listed(bx, bz) {
+                        cursor += 1;
+                        continue;
+                    }
                     let nearest_player = nearest
                         .nearest(m.position.x, m.position.y, m.position.z)
                         .map(|p| p.position);
@@ -312,10 +321,10 @@ impl Game<'_> {
                             break;
                         }
                     }
-                    // ServerLevel.tick: every loaded entity checks despawning, but
-                    // only those in entity-ticking chunks (within the simulation
-                    // distance) tick. The despawn check reads the nearest player
-                    // and the difficulty, not the player the mob sees.
+                    // ServerLevel.tick: every listed entity checks despawning, but
+                    // only those within the simulation distance as well tick. The
+                    // despawn check reads the nearest player and the difficulty, not
+                    // the player the mob sees.
                     if !resuming && !ticking(bx, bz) {
                         let w = MobWorld {
                             others: &snapshot,

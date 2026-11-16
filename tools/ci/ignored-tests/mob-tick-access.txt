@@ -5,3 +5,4 @@ sunrise-client game::creatures::borrowed_tick::mob_tick_access_tests::entity_tic
 sunrise-client game::creatures::borrowed_tick::mob_tick_access_tests::item_lifetime_edit_in_the_item_tick_still_lands lib daily resources
 sunrise-client game::creatures::borrowed_tick::mob_tick_access_tests::mob_despawn_handles_resolve_the_ticking_mob_and_its_peers lib daily resources
 sunrise-client game::creatures::borrowed_tick::mob_tick_access_tests::scoped_despawn_view_tracks_peer_turns_and_defers_mid_pass_spawns lib daily resources
+sunrise-client game::creatures::borrowed_tick::mob_tick_access_tests::a_mob_outside_the_entity_tick_list_checks_no_despawn lib daily resources
