@@ -22,6 +22,7 @@ wasmparser = "0.261"
 wasmtime = { version = "50", default-features = false, features = ["anyhow", "cranelift", "runtime", "std", "parallel-compilation", "pulley", "threads"] }
 
 [build-dependencies]
+syn = "2"
 sunrise-mod-api-gen = { path = "../sunrise-mod-api-gen" }
 
 [target.'cfg(unix)'.dependencies]

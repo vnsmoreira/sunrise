@@ -51,19 +51,4 @@ pub fn check() {
     assert_eq!(text, mod_api::Text::literal("fixture: café 水"));
 }
 
-fn __fnr_read_slot_6() -> Option<fn(u32, &u32) -> u32> {
-    let pointer = crate::__REPLACE[6].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(u32, &u32) -> u32>(pointer) })
-    }
-}
-fn __fnr_read_body_6() -> Option<fn(u32, &u32) -> u32> {
-    let pointer = crate::__REPLACE[7].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(u32, &u32) -> u32>(pointer) })
-    }
-}
+include!(concat!(env!("OUT_DIR"), "/support_checks_readers.rs"));

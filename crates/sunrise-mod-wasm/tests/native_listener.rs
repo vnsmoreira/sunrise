@@ -127,54 +127,7 @@ fn the_shared_listener_source_answers_natively_as_in_wasm() {
 
 static __REPLACE: [std::sync::atomic::AtomicPtr<()>; 8] =
     [const { std::sync::atomic::AtomicPtr::new(std::ptr::null_mut()) }; 8];
-fn __fnr_read_slot_0() -> Option<fn(&mut Option<String>, String)> {
-    let pointer = crate::__REPLACE[0].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(&mut Option<String>, String)>(pointer) })
-    }
-}
-fn __fnr_read_body_0() -> Option<fn(&mut Option<String>, String)> {
-    let pointer = crate::__REPLACE[1].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(&mut Option<String>, String)>(pointer) })
-    }
-}
-fn __fnr_read_slot_2() -> Option<fn(u32, u32) -> u32> {
-    let pointer = crate::__REPLACE[2].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(u32, u32) -> u32>(pointer) })
-    }
-}
-fn __fnr_read_body_2() -> Option<fn(u32, u32) -> u32> {
-    let pointer = crate::__REPLACE[3].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(u32, u32) -> u32>(pointer) })
-    }
-}
-fn __fnr_read_slot_4() -> Option<fn(f32) -> f32> {
-    let pointer = crate::__REPLACE[4].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(f32) -> f32>(pointer) })
-    }
-}
-fn __fnr_read_body_4() -> Option<fn(f32) -> f32> {
-    let pointer = crate::__REPLACE[5].load(std::sync::atomic::Ordering::Relaxed);
-    if pointer.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute::<*mut (), fn(f32) -> f32>(pointer) })
-    }
-}
+include!(concat!(env!("OUT_DIR"), "/native_listener_readers.rs"));
 
 #[test]
 fn collect_positions_copy_in_and_out_natively_as_in_the_real_guest() {
