@@ -503,10 +503,11 @@ fn a_mob_outside_the_entity_tick_list_checks_no_despawn() {
                 .insert((1, 0), Arc::new(Chunk::empty(1, 0)));
             game.mobs[1].position = Vec3::new(24.5, 80.0, 0.5);
             // Only chunk (0, 0) is forced: (1, 0) is loaded at the next level out.
-            game.tickets.update(Some(sunrise_client::ticket_levels::Sources {
-                forced: vec![(0, 0)],
-                ..Default::default()
-            }));
+            game.tickets
+                .update(Some(sunrise_client::ticket_levels::Sources {
+                    forced: vec![(0, 0)],
+                    ..Default::default()
+                }));
             assert!(game.entity_tick_listed_area()(1, 0));
             assert!(game.world.loaded(24, 0) && !game.entity_tick_listed_area()(24, 0));
             game.tick_creature_entities().unwrap();
