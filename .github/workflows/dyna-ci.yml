@@ -215,20 +215,6 @@ jobs:
           RECOVERY_REF: ${{ github.head_ref || github.ref_name }}
         run: python3 tools/ci/boat_watch.py
 
-  pool-watch:
-    needs: changes
-    if: needs.changes.outputs.self_hosted == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tools/ci/dyna_ci_pool_watch.py
-
   # The conflict-hotspot churn report (tools/hotspots/README.md), on the nightly schedule only, on GitHub's runner:
   # replays the last 3 days of merges with `git merge-tree` (git 2.38 or newer) and rewrites one issue. No build.
   # Never a gate: the job and each step continue on error, so a failure or a timeout never fails the run.

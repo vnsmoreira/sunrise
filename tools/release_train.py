@@ -563,8 +563,7 @@ def gate_jobs_passed(run_id, required):
 
 
 DAILY_GREEN = "daily-green"
-FORK_GATE = {"lint", "verify", "verify-static", "launcher", "pool-watch"}
-SNAPSHOT_GATE = {"lint", "verify", "verify-static", "launcher"}
+GATE = {"lint", "verify", "verify-static", "launcher"}
 
 
 def daily_green_commit():
@@ -579,7 +578,7 @@ def fork_gate_passed(sha):
                     f"repos/{REPO}/actions/workflows/dyna-ci.yml/runs?branch=main&event=push&head_sha={sha}&per_page=100")
     runs = [entry for page in pages for entry in page["workflow_runs"]
             if entry["head_sha"] == sha and entry["head_branch"] == "main" and entry["event"] == "push"]
-    return bool(runs) and gate_jobs_passed(runs[0]["id"], SNAPSHOT_GATE)
+    return bool(runs) and gate_jobs_passed(runs[0]["id"], GATE)
 
 
 def channel_head(channel, head):
@@ -591,7 +590,7 @@ def channel_head(channel, head):
     if subprocess.run(["git", "merge-base", "--is-ancestor", sha, "refs/remotes/origin/main"], cwd=ROOT).returncode:
         raise SystemExit(f"::error::refused: {sha} is not on main; a {channel} builds only a commit of main")
     if not fork_gate_passed(sha):
-        raise SystemExit(f"::error::refused: dyna-checks' gate jobs ({', '.join(sorted(SNAPSHOT_GATE))}) "
+        raise SystemExit(f"::error::refused: dyna-checks' gate jobs ({', '.join(sorted(GATE))}) "
                          f"did not all pass on a main push of {sha}; a {channel} needs the gate green on its commit")
     return sha
 
@@ -622,7 +621,7 @@ def green_main_head(parity=False, eligible=None):
                 if eligible is not None and not eligible(sha):
                     continue
                 # The wasm fixture left main pushes for the daily run (daily-green), so the gate alone counts here.
-                if gate_jobs_passed(entry["id"], FORK_GATE):
+                if gate_jobs_passed(entry["id"], GATE):
                     return sha
         return None
     if parity:

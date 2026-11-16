@@ -350,7 +350,7 @@ class ReleaseTrainTests(unittest.TestCase):
                         status="completed", conclusion="failure")
         def job(name, status="completed", conclusion="success"):
             return dict(name=name, status=status, conclusion=conclusion)
-        gates = [job(name) for name in ("lint", "verify", "verify-static", "launcher", "pool-watch")]
+        gates = [job(name) for name in ("lint", "verify", "verify-static", "launcher")]
         records = [record("pr", 1, "pull_request"), record("topic", 2, branch="topic"),
                    record("new", 3), record("good", 4), record("old", 5)]
         jobs = {3: gates[:-1], 4: gates + [job("client-data", conclusion="failure")]}
@@ -375,7 +375,7 @@ class ReleaseTrainTests(unittest.TestCase):
             paths = [call.args[3] for call in requests.call_args_list]
             self.assertFalse(any("/runs/3/jobs" in path for path in paths))
             self.assertTrue(any("/runs/4/jobs" in path for path in paths))
-            for name in ("verify", "verify-static", "pool-watch"):
+            for name in ("verify", "verify-static", "launcher"):
                 for status, conclusion in [("queued", None), ("in_progress", "success"),
                                            ("completed", "skipped"), ("completed", "cancelled"),
                                            ("completed", "failure"), ("completed", "timed_out")]:

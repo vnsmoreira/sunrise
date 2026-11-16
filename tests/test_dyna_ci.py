@@ -219,7 +219,9 @@ class DynaRoutingTests(unittest.TestCase):
             self.assertIn(f"needs.changes.outputs.self_hosted == 'true' && '{label}'", block)
             self.assertNotIn("secrets.", block)
             self.assertNotIn("permissions:", block)
-        self.assertIn("runs-on: ubuntu-latest", blocks["pool-watch"])
+        # The watch for a dead pool runs off the pool, as one scheduled sweep, never as a job of each run.
+        self.assertNotIn("pool-watch", blocks)
+        self.assertIn("runs-on: ubuntu-latest", (ROOT / ".github/workflows/dyna-pool-watch.yml").read_text())
         self.assertIn("permissions:\n  contents: read", workflow)
 
     def test_split_jobs_are_independent_fail_closed_and_share_routing(self):
