@@ -1,0 +1,103 @@
+# Fork-only pre-PR check (vnsmoreira/sunrise): the same steps as sunrise-org/sunrise's ci.yml verify-tree,
+# verify-lint and verify-test, run on GitHub's runners for a branch of this fork before its pull request is opened.
+# Dispatch: gh workflow run precheck.yml -R vnsmoreira/sunrise -f ref=<branch>
+name: precheck
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: branch or commit of this fork to check
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: precheck-${{ inputs.ref }}
+  cancel-in-progress: true
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  tree:
+    name: tree and tools
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Base (merge-base with sunrise-org/sunrise main)
+        id: base
+        run: |
+          git fetch -q https://github.com/sunrise-org/sunrise.git main:refs/remotes/upstream/main
+          echo "sha=$(git merge-base HEAD upstream/main)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Public tree, layers, addresses, API boundary, vocabulary
+        env:
+          BASE_SHA: ${{ steps.base.outputs.sha }}
+        run: |
+          python tools/check_public_tree.py
+          python tools/check_public_tree.py --range "$BASE_SHA..HEAD"
+          python3 tools/check_layers.py --base "$BASE_SHA" --pull-request-merge
+          python3 tools/check_addresses.py --base "$BASE_SHA" --pull-request-merge
+          python3 tools/ci/check_api_boundary.py --source-only
+          python3 tools/check_mod_vocabulary_state.py
+      - name: Format scan and ignored-test rows
+        run: |
+          python3 tools/ci/format_scan.py
+          python3 tools/ci/check_ignored_test_rows.py
+      - name: Python tests
+        run: python -m unittest discover -s tests
+  lint:
+    name: format and lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Toolchain and the ALSA and udev headers
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: precheck-lint
+      - name: Formatting and clippy (as ci.yml verify-lint)
+        run: |
+          cargo +stable fmt --all -- --check
+          find crates/sunrise-mod-api/src crates/sunrise-mod-vocab/src -name '*.rs' -print0 | xargs -0 rustup run stable rustfmt --edition 2024 --check --config skip_children=true
+          find crates/sunrise-client/src/game -name '*.rs' -print0 | xargs -0 rustup run stable rustfmt --edition 2024 --config skip_children=true --check
+          cargo +stable clippy --workspace --all-targets --locked -- -D warnings
+          cargo +stable clippy -p sunrise-client -p sunrise-game -p sunrise-mod-host --all-targets --locked --no-default-features -- -D warnings
+          python3 tools/ci/check_api_boundary.py
+  test:
+    name: Rust tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - name: Toolchain and the ALSA and udev headers
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: precheck-test
+      - name: Scope (as ci.yml verify-test)
+        id: scope
+        run: |
+          git fetch -q https://github.com/sunrise-org/sunrise.git main:refs/remotes/upstream/main
+          python3 tools/ci/test_scope.py "$(git merge-base HEAD upstream/main)" "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build the runtime holder test actor
+        run: cargo +stable build -p sunrise-mod-package --features runtime-process --example holder_actor
+      - name: Rust tests
+        env:
+          PACKAGES: ${{ steps.scope.outputs.packages }}
+        run: |
+          cargo +stable test --locked ${PACKAGES:---workspace} --lib --bins --tests
+          cargo +stable test --locked ${PACKAGES:---workspace} --doc
