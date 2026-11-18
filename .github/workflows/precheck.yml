@@ -39,8 +39,8 @@ jobs:
         run: |
           python tools/check_public_tree.py
           python tools/check_public_tree.py --range "$BASE_SHA..HEAD"
-          python3 tools/check_layers.py --base "$BASE_SHA" --pull-request-merge
-          python3 tools/check_addresses.py --base "$BASE_SHA" --pull-request-merge
+          python3 tools/check_layers.py --base "$BASE_SHA"
+          python3 tools/check_addresses.py --base "$BASE_SHA"
           python3 tools/ci/check_api_boundary.py --source-only
           python3 tools/check_mod_vocabulary_state.py
       - name: Format scan and ignored-test rows
