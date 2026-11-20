@@ -50,6 +50,9 @@ sunrise-client game::maps::tests::map_on_banner_in_adventure_mode_honours_can_pl
 sunrise-client game::mods::tests::a_shared_missing_jar_stops_native_load_and_refuses_each_content_mod_row lib daily child-process
 sunrise-client game::mods::tests::content_overlay_validates_dependencies_and_orders_layers lib daily child-process
 sunrise-client game::mods::tests::native_content_follows_the_build_and_misplaced_content_follows_its_selection lib daily child-process
+sunrise-client game::mounts::occupied_steerable_tests::a_horse_whose_mob_rider_is_dying_takes_no_player lib daily resources
+sunrise-client game::mounts::occupied_steerable_tests::a_ridden_strider_in_lava_passes_before_its_seat_is_asked lib daily resources
+sunrise-client game::mounts::occupied_steerable_tests::a_saddled_pig_or_strider_a_mob_rides_takes_no_player lib daily resources
 sunrise-client game::mounts::tests::a_camel_husk_keeps_itself_once_clicked lib daily game-boot
 sunrise-client game::mounts::tests::a_chest_on_a_donkey_or_mule_plays_its_own_sound_at_full_volume lib daily game-boot
 sunrise-client game::mounts::tests::feeding_a_mount_draws_from_its_own_random_and_posts_eat lib daily game-boot

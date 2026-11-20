@@ -7381,7 +7381,7 @@ def check_raid_captain_fields(host, guest, out):
             exists = test(f'execute if entity {target}')
             assert exists, name
             head, chance = saved(target, 'equipment.head'), saved(target, 'drop_chances')
-            present = test(f'execute as {target} if data entity @s drop_chances.head')
+            present = test(f'execute if data entity {target} drop_chances.head')
             has_chance = name != 'ordinary'
             checks = {'exists': exists,
                       'head': (head is not None and 'white_banner' in head and 'banner_patterns' in head)

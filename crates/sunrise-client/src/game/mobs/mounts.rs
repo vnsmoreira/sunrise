@@ -126,6 +126,15 @@ fn seat_of(m: &sunrise_client::mobs::Mob, attachment: [f64; 3]) -> Vec3 {
 }
 
 impl Game<'_> {
+    /// Whether a mob rides `vehicle` (`Entity.isVehicle` for mob passengers). A
+    /// dying rider still counts: `LivingEntity.die` doesn't dismount it, only
+    /// its removal at the end of `tickDeath` does.
+    fn a_mob_rides(&self, vehicle: u32) -> bool {
+        self.mobs
+            .iter()
+            .any(|r| !r.removed && r.extra.mount == Some(vehicle))
+    }
+
     pub(super) fn mount_index(&self) -> Option<usize> {
         let id = self.riding?;
         self.mobs.iter().position(|m| m.id == id)
@@ -158,10 +167,7 @@ impl Game<'_> {
         if self.riding == Some(id)
             || self.ridden_by_guest(id)
             || equine::is_vehicle(m)
-            || self
-                .mobs
-                .iter()
-                .any(|r| r.alive() && !r.removed && r.extra.mount == Some(id))
+            || self.a_mob_rides(id)
         {
             // !canShearEquipment (isVehicle): the click goes on to mobInteract. A
             // ridden pig or strider has nothing more to give, but a camel takes a
@@ -205,7 +211,8 @@ impl Game<'_> {
         }
         Some(true)
     }
-    /// `Pig` / `Strider.mobInteract`: saddle an adult, or ride a saddled one.
+    /// `Pig` / `Strider.mobInteract`: saddle an adult, or ride a saddled one
+    /// nobody rides (`!isVehicle()`).
     fn interact_steerable(&mut self, index: usize, item: &str) -> bool {
         let held = self.inventory[self.selected].clone();
         let m = &mut self.mobs[index];
@@ -235,12 +242,20 @@ impl Game<'_> {
         if !m.extra.saddled() || food || self.keys.held(Action::Sneak) {
             return false;
         }
+        let (id, eyes_in_lava) = (
+            m.id,
+            m.species() == Species::Strider && m.fluids.eye_in_lava,
+        );
+        // `!isVehicle()`: a pig or strider a mob already rides takes no player,
+        // and the click passes.
+        if self.a_mob_rides(id) {
+            return false;
+        }
         // `Strider.canAddPassenger`: a strider whose eyes are in lava has no
         // seat, though the click still counts as used.
-        if m.species() == Species::Strider && m.fluids.eye_in_lava {
+        if eyes_in_lava {
             return true;
         }
-        let id = m.id;
         if !self.native_may_board(id) {
             return true;
         }
@@ -308,12 +323,7 @@ impl Game<'_> {
         // seat, inventory or feeding to give. Camels seat two and check their
         // passengers themselves.
         let id = m.id;
-        if !matches!(species, Species::Camel | Species::CamelHusk)
-            && self
-                .mobs
-                .iter()
-                .any(|p| p.extra.mount == Some(id) && !p.removed && p.alive())
-        {
+        if !matches!(species, Species::Camel | Species::CamelHusk) && self.a_mob_rides(id) {
             return false;
         }
         // SkeletonHorse.mobInteract: nothing for an untamed one.
@@ -2169,6 +2179,10 @@ pub(in crate::game) mod sneak_dismount_tests;
 #[cfg(test)]
 #[path = "tests/strider_lava_boarding_tests.rs"]
 mod strider_lava_boarding_tests;
+
+#[cfg(test)]
+#[path = "tests/occupied_steerable_tests.rs"]
+mod occupied_steerable_tests;
 
 #[cfg(test)]
 #[path = "tests/ride_dismount_tests.rs"]
